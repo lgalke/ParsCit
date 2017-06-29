@@ -2,7 +2,7 @@
 
 ## Clean CRFPP submodule
 
-This is a fork of ParsCit. Parscit ships with a version of `crfpp` which is
+This is a fork of ParsCit. ParsCit ships with an older version of `crfpp` which is
 hard to compile from source. In this fork, we are instead using `crfpp` as a
 [submodule](https://github.com/taku910/crfpp). Also: We offer a
 [Makefile](Makefile) that builds `crfpp` from source.
