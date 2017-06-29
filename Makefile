@@ -4,23 +4,25 @@ CRFPP_BIN=crfpp
 CRFPP_TEST=$(CRFPP_SRC)/crf_test
 CRFPP_LEARN=$(CRFPP_SRC)/crf_learn
 
-all: crfpp install clean
+all: compile-crfpp install-crfpp clean-crfpp
 	echo "ParsCit ready."
 
-crfpp:
+
+compile-crfpp:
+	echo "Compile crfpp source".
 	git submodule update --init
 	sed -i '/#include "winmain.h"/d' $(CRFPP_SRC)/crf_test.cpp
 	sed -i '/#include "winmain.h"/d' $(CRFPP_SRC)/crf_learn.cpp
 	cd $(CRFPP_SRC) && ./configure && make
 
-
-install: $(CRFPP_TEST) $(CRFPP_LEARN)
+install-crfpp: compile-crfpp
+	echo "Install binaries in crfpp"
 	mkdir -p crfpp
 	cp -f $(CRFPP_TEST) $(CRFPP_BIN)/crf_test
 	cp -f $(CRFPP_LEARN) $(CRFPP_BIN)/crf_learn
 
-
-clean:
+clean-crfpp:
+	echo "Cleaning up crfpp submodule"
 	cd $(CRFPP_SRC) && make clean && git reset --hard
 
 
