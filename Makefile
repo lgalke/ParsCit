@@ -5,6 +5,7 @@ CRFPP_TEST=$(CRFPP_SRC)/crf_test
 CRFPP_LEARN=$(CRFPP_SRC)/crf_learn
 
 all: crfpp install clean
+	echo "ParsCit ready."
 
 crfpp:
 	git submodule update --init
@@ -13,10 +14,10 @@ crfpp:
 	cd $(CRFPP_SRC) && ./configure && make
 
 
-install:
+install: $(CRFPP_TEST) $(CRFPP_LEARN)
 	mkdir -p crfpp
-	cp $(CRFPP_TEST) $(CRFPP_BIN)/crf_test
-	cp $(CRFPP_LEARN) $(CRFPP_BIN)/crf_learn
+	cp -f $(CRFPP_TEST) $(CRFPP_BIN)/crf_test
+	cp -f $(CRFPP_LEARN) $(CRFPP_BIN)/crf_learn
 
 
 clean:
