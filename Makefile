@@ -13,7 +13,7 @@ compile-crfpp:
 	git submodule update --init
 	sed -i '/#include "winmain.h"/d' $(CRFPP_SRC)/crf_test.cpp
 	sed -i '/#include "winmain.h"/d' $(CRFPP_SRC)/crf_learn.cpp
-	cd $(CRFPP_SRC) && ./configure && make
+	cd $(CRFPP_SRC) && ./configure && make && make install
 
 install-crfpp: compile-crfpp
 	echo "Install binaries in crfpp"
