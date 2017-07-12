@@ -20,6 +20,7 @@ install-crfpp: compile-crfpp
 	mkdir -p crfpp
 	cp -f $(CRFPP_TEST) $(CRFPP_BIN)/crf_test
 	cp -f $(CRFPP_LEARN) $(CRFPP_BIN)/crf_learn
+	cp -r $(CRFPP_SRC)/.libs $(CRFPP_BIN)/.libs
 
 clean-crfpp:
 	echo "Cleaning up crfpp submodule"

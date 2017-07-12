@@ -23,11 +23,14 @@ WORDS_RE = re.compile(r'\w\w\w\w+')
 AUTHOR_RE = re.compile(r'\w\w+')
 YEAR_RE = re.compile(r'\d\d\d\d')
 
+PARSCIT_EXEC = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            'citeExtract.pl')
+
 def identify(author, year, title):
     """ Transforms meta-data into unique identifier
-    >>> identifier("Galke, L., Scherp, A.", "17 Sept 2017", "Evaluating the Impact of Word Embeddings on Similarity Scoring in Practical Information Retrieval")
+    >>> identify("Galke, L., Scherp, A.", "17 Sept 2017", "Evaluating the Impact of Word Embeddings on Similarity Scoring in Practical Information Retrieval")
     '@galke2017evaluating'
-    >>> identifier("Sadaati, Hamidreza", 2016, "Inspecting some things")
+    >>> identify("Sadaati, Hamidreza", 2016, "Inspecting some things")
     '@sadaati2016inspecting'
     """
     try:
@@ -53,7 +56,7 @@ def process_file(path, fileOut):
     in one line in the file object specified by the "fileOut"
     """
     print("Processing", path)
-    process = subprocess.Popen(["ParsCit/bin/citeExtract.pl", path],
+    process = subprocess.Popen([PARSCIT_EXEC, path],
                                stdout=subprocess.PIPE)
     root = ET.fromstring(process.stdout.read())
 
