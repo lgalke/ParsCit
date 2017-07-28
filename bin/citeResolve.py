@@ -19,9 +19,11 @@ python3 citex.py -h
 python3 citex.py file1.txt file2.txt file3.txt
 
 """
-WORDS_RE = re.compile(r'\w\w\w\w+')
+WORDS_RE = re.compile(r'\w\w+')
 AUTHOR_RE = re.compile(r'\w\w+')
 YEAR_RE = re.compile(r'\d\d\d\d')
+
+STOP_WORDS = frozenset(['a', 'an', 'the', 'on', 'what', 'why', 'i', 'about'])
 
 PARSCIT_EXEC = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                             'citeExtract.pl')
@@ -32,6 +34,16 @@ def identify(author, year, title):
     '@galke2017evaluating'
     >>> identify("Sadaati, Hamidreza", 2016, "Inspecting some things")
     '@sadaati2016inspecting'
+    >>> identify("Anscombe, Gertrude Elizabeth Margaret", "(1964)", "Before and after.")
+    '@anscombe1964before'
+    >>> identify("Adams, Benjamin, and Krzysztof Janowicz", "2012", "On the Geo-Indicativeness of Non-Georeferenced Text.")
+    '@adams2012geo'
+    >>> identify("Gee, James Paul.", 2003, "What video games have to teach us about learning and literacy")
+    '@gee2003video'
+    >>> identify("Daft, Richard, and I. Why.","(1995)", "Why I recommended that your manuscript be rejected, and what you can do about it.")
+    '@daft1995recommended'
+    >>> identify("Courtois, Nicolas, and Jacques Patarin",  2003, "About the XL Algorithm over GF (2).") 
+    '@courtois2003xl'
     """
     try:
         year = str(int(year))
@@ -39,15 +51,15 @@ def identify(author, year, title):
         m = YEAR_RE.search(year)
         year = m.group(0) if m else ""
 
-    # Find first word with more than 3 characters
-    m = WORDS_RE.search(title)
-    word = m.group(0).lower() if m else ""
+    # Find first non stop word
+    word, *__ = filter(lambda w: w.lower() not in STOP_WORDS,
+                       WORDS_RE.findall(title))
 
     # We try to find first author, even if multiple authors are given
     m = AUTHOR_RE.search(author)
-    author = m.group(0).lower() if m else ""
+    author = m.group(0) if m else ""
 
-    return "@{}{}{}".format(author, year, word)
+    return "@{}{}{}".format(author.lower(), year, word.lower())
 
 
 def process_file(path, fileOut):
