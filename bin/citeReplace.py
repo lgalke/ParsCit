@@ -12,6 +12,8 @@ import io
 import os
 import re
 import xml.etree.ElementTree as ET
+import sys
+import fileinput
 
 """
 Example usage:
@@ -19,77 +21,109 @@ python3 citex.py -h
 python3 citex.py file1.txt file2.txt file3.txt
 
 """
-WORDS_RE = re.compile(r'\w\w+')
+WORDS_RE = re.compile(r'\w\w\w\w+')
 AUTHOR_RE = re.compile(r'\w\w+')
 YEAR_RE = re.compile(r'\d\d\d\d')
-
-STOP_WORDS = frozenset(['a', 'an', 'the', 'on', 'what', 'why', 'i', 'about'])
 
 PARSCIT_EXEC = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                             'citeExtract.pl')
 
 def identify(author, year, title):
     """ Transforms meta-data into unique identifier
-    >>> identify("Galke, L., Scherp, A.", "17 Sept 2017", "Evaluating the Impact of Word Embeddings on Similarity Scoring in Practical Information Retrieval")
+    >>> identify("Galke, L., Scherp, A.", "17 Sept 2017", "Evaluating the Impact of Word Embeddings on Similarity Scoring in Practical          Information Retrieval")
     '@galke2017evaluating'
     >>> identify("Sadaati, Hamidreza", 2016, "Inspecting some things")
     '@sadaati2016inspecting'
-    >>> identify("Anscombe, Gertrude Elizabeth Margaret", "(1964)", "Before and after.")
-    '@anscombe1964before'
-    >>> identify("Adams, Benjamin, and Krzysztof Janowicz", "2012", "On the Geo-Indicativeness of Non-Georeferenced Text.")
-    '@adams2012geo'
-    >>> identify("Gee, James Paul.", 2003, "What video games have to teach us about learning and literacy")
-    '@gee2003video'
-    >>> identify("Daft, Richard, and I. Why.","(1995)", "Why I recommended that your manuscript be rejected, and what you can do about it.")
-    '@daft1995recommended'
-    >>> identify("Courtois, Nicolas, and Jacques Patarin",  2003, "About the XL Algorithm over GF (2).") 
-    '@courtois2003xl'
     """
     try:
         year = str(int(year))
     except ValueError:
         m = YEAR_RE.search(year)
         year = m.group(0) if m else ""
-
-    # Find first non stop word
-    word, *__ = filter(lambda w: w.lower() not in STOP_WORDS,
-                       WORDS_RE.findall(title))
-
+    # Find first word with more than 3 characters
+    m = WORDS_RE.search(title)
+    word = m.group(0).lower() if m else ""
     # We try to find first author, even if multiple authors are given
     m = AUTHOR_RE.search(author)
-    author = m.group(0) if m else ""
+    author = m.group(0).lower() if m else ""
+    return "@{}{}{}".format(author, year, word)
+    
+def make_map(citeList):
+    """ citeList: [identifier] ->  """
+    markers = list(range(1, len(citeList)+1))
+    for j in range(len(markers)):
+        markers[j] = "[{0}]".format(j+1)
+    return dict(zip(markers, citeList))
+    
 
-    return "@{}{}{}".format(author.lower(), year, word.lower())
-
-
-def process_file(path, fileOut):
+def process_file(path):
     """ Extracts citations of the document specified by the "path", parses the
     xml output, makes an identifier for each citation and prints them
     in one line in the file object specified by the "fileOut"
     """
     print("Processing", path)
+    citation_dict = identify_citations(path)
+    outfilename = "{0}.withIdents".format(os.path.splitext(os.path.basename(path))[0])
+    outfile = open(outfilename, 'w')
+    infile = open(path, 'r')
+    replace_markers(infile, citation_dict, outfile)
+    
+def identify_citations(path):
+
     process = subprocess.Popen([PARSCIT_EXEC, path],
                                stdout=subprocess.PIPE)
-    root = ET.fromstring(process.stdout.read())
+    xml = process.stdout.read()
+    root = ET.fromstring(xml)
 
     # build the identifier for each citation
-    citation_ids = []
+    citation_dict = {}
+    # citation_ids = []
+    # FIXME properly extract
+    # citlist = root.find("citationList")
+    # citlist.write(sys.out)
     for citation in root.iter("citation"):
         # get the last name of the of the current citation's first author
-        author = citation[0][0].text
+        # FIXME gives error when other markers
+        author = citation.find('authors').find('author').text
 
         # get the first two words of the current citation's title as the title
-        title = citation[1].text
+        title = citation.find('title').text
+        print(title)
         # get the date of the current citation
-        date = citation[2].text
+        date = citation.find('date').text
         # write the identifiers for the current citation in the given file
         # object
+        marker = citation.find('marker').text
+        print('Marker', marker)
+        citation_dict[marker] = identify(author, date, title)
+
+        ### marker ###
+        
         ident = identify(author, date, title)
-        citation_ids.append(ident)
-    in_document = os.path.splitext(os.path.basename(path))[0]
-    print(in_document, *citation_ids, file=fileOut)
+        # citation_ids.append(ident)
+    # citation_dict = make_map(citation_ids)
+    #print(citation_ids)
+    #print(citation_dict)
+    return citation_dict
+    
 
+def replace_markers(infile, citation_dict, outfile):
+    # filehandles: infile, outfile
+    text = infile.read()
+    for marker, identifier in citation_dict.items():
+        text = text.replace(marker, "{}".format(identifier))
 
+    outfile.write(text)
+
+    # for line in infile:
+    #     for marker in citation_dict:
+    #         identifier = citation_dict[marker]
+            
+    #         if marker in line:
+    #             line = line.replace(marker, "[{0}]".format(identifier))
+    #     print(line, file = outfile)
+    
+    
 def main():
     print("[citex] Hello world")
 
@@ -102,15 +136,9 @@ def main():
     # invoke actual parsing of command line arguments
     args = parser.parse_args()
 
-    # make a file object (for writing the output) in the working directory
-    try:
-        os.mknod("corpus")
-        fp = open("corpus", 'w')
-    except Exception:
-        fp = open("corpus", 'w')
-
+    
     for path in args.paths:          # Loop over all provided paths...
-        process_file(path, fp)       # ...and process each file.
+        process_file(path)       # ...and process each file.
 
 
 if __name__ == '__main__':
