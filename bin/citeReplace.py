@@ -48,12 +48,6 @@ def identify(author, year, title):
     author = m.group(0).lower() if m else ""
     return "@{}{}{}".format(author, year, word)
     
-def make_map(citeList):
-    """ citeList: [identifier] ->  """
-    markers = list(range(1, len(citeList)+1))
-    for j in range(len(markers)):
-        markers[j] = "[{0}]".format(j+1)
-    return dict(zip(markers, citeList))
     
 
 def process_file(path):
@@ -62,48 +56,48 @@ def process_file(path):
     in one line in the file object specified by the "fileOut"
     """
     print("Processing", path)
-    citation_dict = identify_citations(path)
+    citation_dict = map_citations(path)
     outfilename = "{0}.withIdents".format(os.path.splitext(os.path.basename(path))[0])
     outfile = open(outfilename, 'w')
     infile = open(path, 'r')
     replace_markers(infile, citation_dict, outfile)
     
-def identify_citations(path):
+def map_citations(path):
+    """ Extracts citations of the document specified by the "path", parses the
+    xml output, makes an identifier for each citation and returns a dictionary 
+    with "marker: identifier" items
+    """
 
     process = subprocess.Popen([PARSCIT_EXEC, path],
                                stdout=subprocess.PIPE)
     xml = process.stdout.read()
     root = ET.fromstring(xml)
 
-    # build the identifier for each citation
     citation_dict = {}
-    # citation_ids = []
-    # FIXME properly extract
-    # citlist = root.find("citationList")
-    # citlist.write(sys.out)
+    
+    # FIXME properly extract: FIXED
+    # build the identifier for each citation
     for citation in root.iter("citation"):
-        # get the last name of the of the current citation's first author
-        # FIXME gives error when other markers
-        author = citation.find('authors').find('author').text
+       # FIXME gives error when other markers: FIXED
+       
+       #skip the citation when it's attribute valid == 'false', since it does not provide enough data for identification
+       if citation.get('valid') == "true":
+          
+          author = citation.find('authors').find('author').text
 
-        # get the first two words of the current citation's title as the title
-        title = citation.find('title').text
-        print(title)
-        # get the date of the current citation
-        date = citation.find('date').text
-        # write the identifiers for the current citation in the given file
-        # object
-        marker = citation.find('marker').text
-        print('Marker', marker)
-        citation_dict[marker] = identify(author, date, title)
+          # get the title or booktitle or journal(special case) as the title for identifier
+          try:
+            title = citation.find('title').text if citation.find('title') is not None else citation.find('booktitle').text
+          except AttributeError:
+            title = citation.find('journal').text    
+          
+          date = citation.find('date').text
+          
+          marker = citation.find('marker').text
+          
+          citation_dict[marker] = identify(author, date, title)
 
-        ### marker ###
-        
-        ident = identify(author, date, title)
-        # citation_ids.append(ident)
-    # citation_dict = make_map(citation_ids)
-    #print(citation_ids)
-    #print(citation_dict)
+    print(citation_dict)
     return citation_dict
     
 
