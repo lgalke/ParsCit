@@ -56,11 +56,11 @@ def process_file(path):
     in one line in the file object specified by the "fileOut"
     """
     print("Processing", path)
-    citation_dict = map_citations(path)
+    citMaps = map_citations(path)
     outfilename = "{0}.withIdents".format(os.path.splitext(os.path.basename(path))[0])
     outfile = open(outfilename, 'w')
     infile = open(path, 'r')
-    replace_markers(infile, citation_dict, outfile)
+    replace_withIdents(infile, citMaps, outfile)
     
 def map_citations(path):
     """ Extracts citations of the document specified by the "path", parses the
@@ -73,8 +73,10 @@ def map_citations(path):
     xml = process.stdout.read()
     root = ET.fromstring(xml)
 
-    citation_dict = {}
     
+    markerMap = {}
+    citStrMap = {}
+        
     # FIXME properly extract: FIXED
     # build the identifier for each citation
     for citation in root.iter("citation"):
@@ -87,26 +89,41 @@ def map_citations(path):
 
           # get the title or booktitle or journal(special case) as the title for identifier
           try:
-            title = citation.find('title').text if citation.find('title') is not None else citation.find('booktitle').text
+              title = citation.find('title').text if citation.find('title') is not None else citation.find('booktitle').text
           except AttributeError:
-            title = citation.find('journal').text    
+              title = citation.find('journal').text    
           
           date = citation.find('date').text
           
           marker = citation.find('marker').text
           
-          citation_dict[marker] = identify(author, date, title)
+          markerMap[marker] = identify(author, date, title)
+          
+          try:
+              contexts = citation.find('contexts')
+              for context in contexts.findall('context'):
+                 citStr = context.get('citStr')
+                 citStrMap[citStr] = identify(author, date, title)
+                 
+          except AttributeError: 
+              pass
+          
+          citMaps = (markerMap, citStrMap)
+    #print()
+    return citMaps
 
-    print(citation_dict)
-    return citation_dict
-    
-
-def replace_markers(infile, citation_dict, outfile):
+def replace_withIdents(infile, citMaps, outfile):
     # filehandles: infile, outfile
     text = infile.read()
-    for marker, identifier in citation_dict.items():
+    markerMap = citMaps[0]
+    citStrMap = citMaps[1]
+    
+    for marker, identifier in markerMap.items():
         text = text.replace(marker, "{}".format(identifier))
-
+        
+    for citStr, identifier in citStrMap.items():
+        text = text.replace(citStr, "{}".format(identifier))
+    
     outfile.write(text)
 
     # for line in infile:
