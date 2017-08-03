@@ -64,18 +64,21 @@ def process_file(path):
     
 def map_citations(path):
     """ Extracts citations of the document specified by the "path", parses the
-    xml output, makes an identifier for each citation and returns a dictionary 
-    with "marker: identifier" items
+    xml output, makes an identifier for each citation and returns a tuple of 3 
+    dictionaries for citations
     """
-
+    #extracts citations by ParsCit and parses the xml output in a root element
     process = subprocess.Popen([PARSCIT_EXEC, path],
                                stdout=subprocess.PIPE)
     xml = process.stdout.read()
     root = ET.fromstring(xml)
 
-    
+    # dictionary with {marker:identifier} items
     markerMap = {}
-    citStrMap = {}
+    # dictionary with {citString:identifier} items
+    citeStrMap = {}
+    # dictionary with {rawString:identifier} items
+    rawStringMap = {}
         
     # FIXME properly extract: FIXED
     # build the identifier for each citation
@@ -84,56 +87,90 @@ def map_citations(path):
        
        #skip the citation when it's attribute valid == 'false', since it does not provide enough data for identification
        if citation.get('valid') == "true":
-          
+       
+          #get the first author of current citation for identifier
           author = citation.find('authors').find('author').text
 
-          # get the title or booktitle or journal(special case) as the title for identifier
+          # get the title or booktitle or journal(special case) of the current citation as the title for identifier
           try:
               title = citation.find('title').text if citation.find('title') is not None else citation.find('booktitle').text
           except AttributeError:
               title = citation.find('journal').text    
           
+          #get the date of the current citation for identifier
           date = citation.find('date').text
           
+          #make the identifier for the current citation
+          identifier = identify(author, date, title)
+          
+          #get the marker of the current citation 
           marker = citation.find('marker').text
           
-          markerMap[marker] = identify(author, date, title)
+          #set the marker:identifer item for the current citation in the corresponding dictionary
+          markerMap[marker] = identifier 
           
+          #get the contexts (where the current citation are cited) and citStrings (citation string) 
+          #for the current citation in the body of the given text file 
           try:
               contexts = citation.find('contexts')
               for context in contexts.findall('context'):
-                 citStr = context.get('citStr')
-                 citStrMap[citStr] = identify(author, date, title)
-                 
+                 citeStr = context.get('citStr')
+                 #set the citeString:identifer item for the current citation in the corresponding dictionary
+                 citeStrMap[citeStr] = identifier
+          
+          #pass if no context exists (might occur since ParsCit extarcts the citation 
+          #based on the rawreference string in the reference section of the given text file       
           except AttributeError: 
               pass
           
-          citMaps = (markerMap, citStrMap)
-    #print()
-    return citMaps
+          #get the rawString (reference string in the reference section of the given text file) 
+          rawString = citation.find('rawString').text
+          #set the rawString:identifer item for the current citation in the corresponding dictionary
+          rawStringMap[rawString] = identifier
+              
+    #make a tuple of the three dictionaries to return       
+    citeMaps = (markerMap, citeStrMap, rawStringMap)
+    #print(sorted(citeStrMap))
+    return citeMaps
 
-def replace_withIdents(infile, citMaps, outfile):
+def replace_withIdents(infile, citeMaps, outfile):
+    """ receives the text file object and the corresponding three dictionaries for citations 
+    as input arguments and replaces the citations with identifers and write the text in the given
+    outfile object       
+    """
     # filehandles: infile, outfile
     text = infile.read()
-    markerMap = citMaps[0]
-    citStrMap = citMaps[1]
     
+    #get the three dictionaries from the given tuple
+    markerMap = citeMaps[0]
+    citeStrMap = citeMaps[1]
+    rawStringMap = citeMaps[2]
+    
+    
+    #do the replacements based on {marker}s; this suffices for the whole replacmet work 
+    #when {marker} and {citString} are the same in the parsed XML, 
+    #e.g. when references are cited with numbers   
     for marker, identifier in markerMap.items():
-        text = text.replace(marker, "{}".format(identifier))
+        text = text.replace(marker, identifier)
         
-    for citStr, identifier in citStrMap.items():
-        text = text.replace(citStr, "{}".format(identifier))
-    
+    #do the replacements based on {citString}s; replaces the citatios within the body of the text     
+    for citeStr, identifier in citeStrMap.items():
+        text = text.replace(citeStr, identifier)
+        
+    #do the replacements based on {rawString}s; adds the identifiers in the reference section of the text        
+    for rawString, identifier in rawStringMap.items():
+        searchString = rawString[0:min(40, len(rawString))]
+        text = text.replace(searchString, "{0}. {1}".format(identifier, searchString))
+        
+    #remove duplications of identifiers in text
+    for identifier in rawStringMap.values():
+        dupIdentifier = "{0} {0}".format(identifier)
+        while text.find(dupIdentifier) > -1: 
+           text = text.replace(dupIdentifier, identifier)       
+   
     outfile.write(text)
 
-    # for line in infile:
-    #     for marker in citation_dict:
-    #         identifier = citation_dict[marker]
-            
-    #         if marker in line:
-    #             line = line.replace(marker, "[{0}]".format(identifier))
-    #     print(line, file = outfile)
-    
+        
     
 def main():
     print("[citex] Hello world")
