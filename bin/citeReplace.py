@@ -51,19 +51,21 @@ def identify(author, year, title):
     
     
 
-def process_file(path, dir = None):
+def process_file(path, dir = None, identTable = False ):
     """ Pass the given path to function map_citations() to generate citation dictionary,
     generate input and output file handles and calls the function replace_withIdentsithIdents()
     """
     print("Processing", path)
-    citMaps = map_citations(path)
+    if identTable:
+        identTableFile = open("{}/corpus".format(dir or os.getcwd()), 'a')
+    citMaps = map_citations(path, identTableFile)
     outfilename = "{0}.withIdents".format(os.path.splitext(os.path.basename(path))[0])
     outfile = open("{}/".format(dir or os.getcwd()) + outfilename, 'w')
     infile = open(path, 'r')
     replace_withIdents(infile, citMaps, outfile)
     
     
-def map_citations(path):
+def map_citations(path, identTableFile = None):
     """ Extracts citations of the document specified by the "path", parses the
     xml output, makes an identifier for each citation and returns a tuple of 3 
     dictionaries for citations
@@ -80,7 +82,8 @@ def map_citations(path):
     citeStrMap = defaultdict(set)
     # dictionary with {rawString:identifier} items
     rawStringMap = {}
-        
+    
+    citation_ids = []    
     # FIXME properly extract: FIXED
     # build the identifier for each citation
     for citation in root.iter("citation"):
@@ -103,6 +106,8 @@ def map_citations(path):
           
           #make the identifier for the current citation
           identifier = identify(author, date, title)
+          #add the current identifier to the idslist
+          citation_ids.append(identifier)
           
           #get the marker of the current citation 
           marker = citation.find('marker').text
@@ -128,8 +133,12 @@ def map_citations(path):
           rawString = citation.find('rawString').text
           #set the rawString:identifer item for the current citation in the corresponding dictionary
           rawStringMap[rawString] = identifier
-              
-    #make a tuple of the three dictionaries to return       
+    
+    if identTableFile:       # when the table file is provided means that the optional argument identiferTable in the main is true
+        in_document = os.path.splitext(os.path.basename(path))[0]    # get the path file name    
+        print(in_document, *citation_ids, file=identTableFile)       #print the citation_ids in a line in the provided tableFile       
+    
+    #make a tuple of the three dictionaries to return                 
     citeMaps = (markerMap, citeStrMap, rawStringMap)
     #print(sorted(citeStrMap))
     return citeMaps
@@ -185,7 +194,9 @@ def main():
                         nargs='+',  # at least one but arbirary amount of files
                         help='Specify the files to extract citations from.')
     parser.add_argument('-o', '--outDirectory',
-                         help = 'specify the output destination folder.')                    
+                         help = 'specify the output destination folder.')
+    parser.add_argument('-t', '--identiferTable', action="store_true",
+                         help = 'make a table of identifiers for citations.')                                         
 
     # invoke actual parsing of command line arguments
     args = parser.parse_args()
@@ -195,15 +206,24 @@ def main():
             os.mkdir(outDir)
     except TypeError:
         pass
-            
+    
+    identTable = args.identiferTable    
+        
+    
+#    if args.identiferTable:
+#        identableFile = open("{}/corpus".format(outDir or os.getcwd()), 'w')
+#            os.mknod("{}/corpus".format(outDir or os.getcwd()))
+#            fp = open("corpus", 'w')
+#            except Exception:
+#            fp = open("corpus", 'w')        
            
     for path in args.paths:                  # Loop over all provided paths...
         if os.path.isdir(path):              # loop over files if the current path is a file folder
             for filename in os.listdir(path):
                 pathName = os.path.realpath(os.path.join(path, filename))    #generate path name for each file 
-                process_file(pathName, outDir)       # ...and process each file.
+                process_file(pathName, outDir, identTable)       # ...and process each file.
         else:
-            process_file(path, outDir)      # if the current path specifies a file
+            process_file(path, outDir, identTable)      # if the current path specifies a file
             
 
 if __name__ == '__main__':
