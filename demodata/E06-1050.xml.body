@@ -1,13 +1,21 @@
 A Probabilistic Answer Type Model
 Christopher Pinchak
+
 Department of Computing Science
+
 University of Alberta
+
 Edmonton, Alberta, Canada
+
 pinchak@cs.ualberta.ca
 Dekang Lin
+
 Google, Inc.
+
 1600 Amphitheatre Parkway
+
 Mountain View, CA
+
 lindek@google.com
 Abstract
 All questions are implicitly associated 
@@ -520,6 +528,7 @@ tions because our system is designed to deal
 with questions whose answer types are often 
 semantically open-ended noun phrases.
 •	There exists entry for the question in the an-
+
 swer patterns provided by Ken Litkowski2.
 •	One of the top-10 documents returned by 
 PRISE contains a correct answer.
@@ -584,7 +593,10 @@ k=1
 E(R) =
 398
 System	Measure	Question Type						
-		All	Location	Person	Organization	Thing-Name	Misc	Other
+		All	Location
+	Person	Organization
+	Thing-Name
+	Misc	Other
 		(154)	(57)	(17)	(19)	(17)	(37)	(7)
 Our model	Median	1.2%	0.8%	2.0%	1.3%	3.7%	3.5%	12.2%
 	Top 1%	71	34	6	9	7	13	2

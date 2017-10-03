@@ -8,4 +8,4 @@ build_crfpp:
 	git submodule update --init
 	sed -i '/#include "winmain.h"/d' $(CRFPP_DIR)/crf_test.cpp
 	sed -i '/#include "winmain.h"/d' $(CRFPP_DIR)/crf_learn.cpp
-	cd $(CRFPP_DIR) && ./configure && make && make install
+	cd $(CRFPP_DIR) && ./configure && make
