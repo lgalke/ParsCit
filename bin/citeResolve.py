@@ -19,8 +19,7 @@ from collections import defaultdict
 """
 Example usage:
 python3 citex.py -h
-python3 citex.py file1.txt file2.txt file3.txt
-
+python3 citex.py file1.txt file2.txt file3.txt 
 """
 WORDS_RE = re.compile(r'\w\w\w\w+')
 AUTHOR_RE = re.compile(r'\w\w+')
